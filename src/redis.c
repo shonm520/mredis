@@ -10,33 +10,32 @@
 #include "process_command.h"
 #include "redis_define.h"
 #include "object.h"
+#include "logger.h"
 
 sharedObjectsStruct shared;
 
 static void onMessage(connection *conn)
 {
-    int size = 0;
-    char* msg = ring_buffer_get_msg(conn->ring_buffer_read, &size);
-    //printf("read all : %s, %d\n", msg, size);
-
     redisClient* client = (redisClient*)conn->data;
-    int ret = process_command(client, msg, size);
+    int ret = processCommand(client);
     if (ret == REDIS_OK)  {
-        ring_buffer_push_data(conn->ring_buffer_write, shared.ok->ptr, shared.ok->len);
-        connection_send_buffer(conn);
+        replyClient(client, shared.ok->ptr, shared.ok->len);
     }
 }
 
 static void ondisconnect(connection* conn)
 {
     printf("svr disconnected\n\n");
+    freeClient(conn->data);
 }
 
 static void onConnection(connection* conn)
 {
     redisClient* client = zmalloc(sizeof(redisClient));
     memset(client, 0, sizeof(redisClient));
+    client->connect_data = conn;
     conn->data = client;
+
     conn->disconnected_cb = ondisconnect;
 }
 
@@ -65,4 +64,33 @@ int main(int argc, char* argv[])
 void createSharedObjects()
 {
     shared.ok = createObject(OBJ_STRING, "+OK\r\n");
+}
+
+
+char* readQueryFromClient(redisClient* client, int* size)
+{
+    connection* conn = client->connect_data;
+    if (!conn)  {
+        debug_ret("conn is null when readQueryFromClient, %s, %d", __FILE__, __LINE__);
+        return NULL;
+    }
+    char* msg = ring_buffer_get_msg(conn->ring_buffer_read, size);
+    return msg;
+}
+
+int replyClient(redisClient* client, char* msg, int len)
+{
+    connection* conn = client->connect_data;
+     if (!conn)  {
+        debug_ret("conn is null when replyClient, %s, %d", __FILE__, __LINE__);
+        return -1;
+    }
+    ring_buffer_push_data(conn->ring_buffer_write, msg, len);
+    return connection_send_buffer(conn);
+}
+
+void freeClient(redisClient* client)
+{
+    zfree(client->argv);
+    zfree(client);
 }
