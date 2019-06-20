@@ -1,5 +1,7 @@
 #include <limits.h>
 #include <string.h>
+#include "connection.h"
+#include "ring_buffer.h"
 #include "process_command.h"
 #include "config.h"
 #include "redis_define.h"
@@ -84,6 +86,9 @@ int processCommand(redisClient* client)
         return -1;
     }
 
+    connection* conn = client->connect_data;
+    ring_buffer_release_bytes(conn->ring_buffer_read, len);
+    
     int type = REDIS_REQ_INLINE;
     if (msg[0]  == '*')  {
         type = REDIS_REQ_MULTIBULK;
