@@ -23,7 +23,9 @@
 #define mu_free   free
 
 #define zmalloc malloc
+#define zcalloc calloc
 #define zfree   free
+
 
 #define LARGE_PAGE_NODE 12   //buffer node 的对其
 
