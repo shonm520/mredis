@@ -22,7 +22,7 @@ unsigned int dictSdsHash(const void *key)
 	return dictGenHashFunction((unsigned char*)key, strlen((char*)key));
 }
 
-unsigned int dictSdsCaseHash(const void *key) 
+uint64_t dictSdsCaseHash(const void *key) 
 {
 	return dictGenCaseHashFunction((unsigned char*)key, strlen((char*)key));
 }
